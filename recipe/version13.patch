@@ -1,15 +1,15 @@
-From 0fd975806ccacbee74fda36ee64a93c1f9e102aa Mon Sep 17 00:00:00 2001
+From 6664392ad5dcb5a107e4e9377ffbe5bef7c7fd85 Mon Sep 17 00:00:00 2001
 From: Jan Janssen <jan.janssen@outlook.com>
-Date: Tue, 7 Jun 2022 07:31:31 -0600
+Date: Tue, 7 Jun 2022 07:48:47 -0600
 Subject: [PATCH] Version 1.3
 
 ---
- recordtype.py | 375 +++++++++++++++++++++++++++-----------------------
- setup.py      |   4 +-
- 2 files changed, 208 insertions(+), 171 deletions(-)
+ recordtype.py | 385 +++++++++++++++++++++++++++-----------------------
+ setup.py      |  10 +-
+ 2 files changed, 218 insertions(+), 177 deletions(-)
 
 diff --git a/recordtype.py b/recordtype.py
-index 3fd9d4d..75f3c89 100644
+index 39df026..6e62c04 100644
 --- a/recordtype.py
 +++ b/recordtype.py
 @@ -1,7 +1,7 @@
@@ -21,7 +21,7 @@ index 3fd9d4d..75f3c89 100644
  #
  # Licensed under the Apache License, Version 2.0 (the "License");
  # you may not use this file except in compliance with the License.
-@@ -28,7 +28,7 @@
+@@ -28,20 +28,22 @@
  # keyword-only.
  ########################################################################
  
@@ -30,7 +30,13 @@ index 3fd9d4d..75f3c89 100644
  
  import sys as _sys
  from keyword import iskeyword as _iskeyword
-@@ -42,8 +42,8 @@
+ from collections import Mapping as _Mapping
+ 
++from six import exec_, string_types
++
+ NO_DEFAULT = object()
+ 
+ # Keep track of fields, both with and without defaults.
  class _Fields(object):
      def __init__(self, default):
          self.default = default
@@ -41,7 +47,7 @@ index 3fd9d4d..75f3c89 100644
  
      def add_with_default(self, field_name, default):
          if default is NO_DEFAULT:
-@@ -55,8 +55,10 @@ def add_without_default(self, field_name):
+@@ -53,8 +55,10 @@ def add_without_default(self, field_name):
          if self.default is NO_DEFAULT:
              # No default. There can't be any defaults already specified.
              if self.with_defaults:
@@ -54,7 +60,7 @@ index 3fd9d4d..75f3c89 100644
              self.without_defaults.append(field_name)
          else:
              self.add_with_default(field_name, self.default)
-@@ -67,28 +69,34 @@ def add_without_default(self, field_name):
+@@ -65,28 +69,34 @@ def add_without_default(self, field_name):
  #  bad.
  def _check_name(name, is_type_name=False, seen_names=None):
      if len(name) == 0:
@@ -104,7 +110,7 @@ index 3fd9d4d..75f3c89 100644
  
  
  # Validate a field name. If it's a bad name, and if rename is True,
-@@ -98,7 +106,7 @@ def _check_field_name(name, seen_names, rename, idx):
+@@ -96,7 +106,7 @@ def _check_field_name(name, seen_names, rename, idx):
          _check_name(name, seen_names=seen_names)
      except ValueError as ex:
          if rename:
@@ -113,7 +119,7 @@ index 3fd9d4d..75f3c89 100644
          else:
              raise
  
-@@ -110,11 +118,10 @@ def _default_name(field_name):
+@@ -108,11 +118,10 @@ def _default_name(field_name):
      # Can't just use _{0}_default, because then a field name '_0'
      #  would give a default name of '__0_default'. Since it begins
      #  with 2 underscores, the name gets mangled.
@@ -127,8 +133,12 @@ index 3fd9d4d..75f3c89 100644
      # field_names must be a string or an iterable, consisting of fieldname
      #  strings or 2-tuples. Each 2-tuple is of the form (fieldname,
      #  default).
-@@ -126,7 +133,7 @@ def recordtype(typename, field_names, default=NO_DEFAULT, rename=False,
-     if isinstance(field_names, string_types):
+@@ -121,10 +130,10 @@ def recordtype(typename, field_names, default=NO_DEFAULT, rename=False,
+ 
+     _check_name(typename, is_type_name=True)
+ 
+-    if isinstance(field_names, basestring):
++    if isinstance(field_names, string_types):
          # No per-field defaults. So it's like a namedtuple, but with
          #  a possible default value.
 -        field_names = field_names.replace(',', ' ').split()
@@ -136,12 +146,14 @@ index 3fd9d4d..75f3c89 100644
  
      # If field_names is a Mapping, change it to return the
      #  (field_name, default) pairs, as if it were a list
-@@ -143,60 +150,67 @@ def recordtype(typename, field_names, default=NO_DEFAULT, rename=False,
+@@ -140,61 +149,68 @@ def recordtype(typename, field_names, default=NO_DEFAULT, rename=False,
+ 
      seen_names = set()
      for idx, field_name in enumerate(field_names):
-         if isinstance(field_name, string_types):
+-        if isinstance(field_name, basestring):
 -            field_name = _check_field_name(field_name, seen_names, rename,
 -                                           idx)
++        if isinstance(field_name, string_types):
 +            field_name = _check_field_name(field_name, seen_names, rename, idx)
              fields.add_without_default(field_name)
          else:
@@ -238,7 +250,7 @@ index 3fd9d4d..75f3c89 100644
          "{typename}({argtxt})"
  
          _fields = ({quoted_argtxt})
-@@ -227,20 +241,21 @@ def __getstate__(self):
+@@ -225,20 +241,21 @@ def __getstate__(self):
              {getstate}
  
          def __setstate__(self, state):
@@ -274,16 +286,19 @@ index 3fd9d4d..75f3c89 100644
  
      # Execute the template string in a temporary namespace.
      namespace = {}
-@@ -251,7 +266,7 @@ def __setstate__(self, state):
+@@ -247,9 +264,9 @@ def __setstate__(self, state):
+         namespace[_default_name(name)] = default
+ 
      try:
-         exec_(template, namespace, namespace)
+-        exec template in namespace
++        exec_(template, namespace, namespace)
      except SyntaxError as e:
 -        raise SyntaxError(e.message + ':\n' + template)
 +        raise SyntaxError(e.message + ":\n" + template)
  
      # Find the class we created, set its _source attribute to the
      #   template used to create it.
-@@ -262,123 +277,132 @@ def __setstate__(self, state):
+@@ -260,123 +277,132 @@ def __setstate__(self, state):
      #  the frame where the named tuple is created.  Bypass this step in
      #  enviroments where sys._getframe is not defined (Jython for
      #  example).
@@ -456,7 +471,7 @@ index 3fd9d4d..75f3c89 100644
              p0 = Point()
              p1 = Point(0)
              self.assertEqual(p0, Point())
-@@ -390,42 +414,41 @@ def test_equality_inequality(self):
+@@ -388,42 +414,41 @@ def test_equality_inequality(self):
              self.assertNotEqual(p0, 3)
              self.assertNotEqual(p0, None)
              self.assertNotEqual(p0, object())
@@ -509,7 +524,7 @@ index 3fd9d4d..75f3c89 100644
              p = Point(0)
              self.assertEqual((p.x, p.y, p.z), (0, 10, 20))
              p.x = -1
-@@ -436,113 +459,107 @@ def test_writable(self):
+@@ -434,113 +459,107 @@ def test_writable(self):
              self.assertEqual((p.x, p.y, p.z), (-1, -1, None))
  
          def test_complex_defaults(self):
@@ -658,7 +673,7 @@ index 3fd9d4d..75f3c89 100644
              p = Point()
              self.assertEqual(p.x, 0)
              self.assertEqual(p.y, 100)
-@@ -553,16 +570,36 @@ def test_NO_DEFAULT(self):
+@@ -551,16 +570,36 @@ def test_NO_DEFAULT(self):
              # NO_DEFAULT is only really useful with we're using a mapping
              #  plus a default value. it's the only way to specify that
              #  some of the fields use the default.
@@ -696,12 +711,21 @@ index 3fd9d4d..75f3c89 100644
 +            b = A()
 +            self.assertEqual(b.x, [4])
  
-     unittest.main()
+-    unittest.main()
++    unittest.main()
+\ No newline at end of file
 diff --git a/setup.py b/setup.py
-index 979a4aa..f843540 100644
+index db401de..f843540 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -15,7 +15,7 @@ def run(self):
+@@ -1,4 +1,5 @@
+-from distutils.core import setup, Command
++from distutils.core import Command
++from setuptools import setup
+ 
+ # run our tests
+ class PyTest(Command):
+@@ -14,7 +15,7 @@ def run(self):
  
  
  setup(name='recordtype',
@@ -710,10 +734,13 @@ index 979a4aa..f843540 100644
        url='https://bitbucket.org/ericvsmith/recordtype',
        author='Eric V. Smith',
        author_email='eric@trueblade.com',
-@@ -33,4 +33,4 @@ def run(self):
+@@ -30,5 +31,6 @@ def run(self):
+       license='Apache License Version 2.0',
+       py_modules=['recordtype'],
  
-       cmdclass={'test': PyTest},
-       install_requires=['six'],
+-      cmdclass = {'test': PyTest},
 -      )
++      cmdclass={'test': PyTest},
++      install_requires=['six'],
 +      )
 \ No newline at end of file
