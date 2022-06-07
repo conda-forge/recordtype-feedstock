@@ -6,8 +6,11 @@ package:
   version: {{ version }}
 
 source:
-  url: https://bitbucket.org/ericvsmith/recordtype/get/{{ version }}.tar.gz
-  sha256: 6afd135ddc938f7a249c50b16bf9b85e8ae98df1dad45986b0c4299d5c9760d7
+  url: https://github.com/naegelyd/recordtype/archive/refs/tags/1.2.tar.gz
+  sha256: 7de9b988bb8939f8ce64f722d64849c571bc9baacdb2d3cf0430881e5c3a14be
+  patches:
+    - version13.patch
+    - python38.patch
 
 build:
   noarch: python
@@ -16,10 +19,10 @@ build:
 
 requirements:
   host:
-    - python
+    - python >=3.6
     - pip
   run:
-    - python
+    - python >=3.6
     - six
 
 test:

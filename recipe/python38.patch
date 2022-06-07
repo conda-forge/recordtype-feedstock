@@ -1,0 +1,25 @@
+From 0e2580b6075e4dbad03ab902f57eb7b048fcd335 Mon Sep 17 00:00:00 2001
+From: Jan Janssen <jan.janssen@outlook.com>
+Date: Tue, 7 Jun 2022 07:32:51 -0600
+Subject: [PATCH] Python 3.8
+
+---
+ recordtype.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/recordtype.py b/recordtype.py
+index 75f3c89..3702242 100644
+--- a/recordtype.py
++++ b/recordtype.py
+@@ -32,7 +32,10 @@
+ 
+ import sys as _sys
+ from keyword import iskeyword as _iskeyword
+-from collections import Mapping as _Mapping
++if _sys.version_info[:2] >= (3, 8):
++    from collections.abc import Mapping as _Mapping
++else:
++    from collections import Mapping as _Mapping
+ 
+ from six import exec_, string_types
+ 
